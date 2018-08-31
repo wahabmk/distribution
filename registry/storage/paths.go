@@ -483,5 +483,14 @@ func digestFromPath(digestPath string) (digest.Digest, error) {
 	}
 
 	dgst := digest.NewDigestFromHex(algo, hex)
-	return dgst, dgst.Validate()
+	switch algo {
+	// id as an algorithm treats the hash as an inode
+	// id's are randomly generated and so is
+	// an unvalidated digest that should be validated
+	// by the caller of Enumerate with the ingester function
+	case "id":
+		return dgst, nil
+	default:
+		return dgst, dgst.Validate()
+	}
 }
