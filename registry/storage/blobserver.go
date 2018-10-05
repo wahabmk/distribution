@@ -14,6 +14,10 @@ import (
 // TODO(stevvooe): This should configurable in the future.
 const blobCacheControlMaxAge = 365 * 24 * time.Hour
 
+const (
+	DownstreamKey = "auth.downstream"
+)
+
 // blobServer simply serves blobs from a driver instance using a path function
 // to identify paths and a descriptor service to fill in metadata.
 type blobServer struct {
@@ -21,6 +25,29 @@ type blobServer struct {
 	statter  distribution.BlobStatter
 	pathFn   func(dgst digest.Digest) (string, error)
 	redirect bool // allows disabling URLFor redirects
+}
+
+func (bs *blobServer) shouldUseRedirect(ctx context.Context, method string) bool {
+	// If redirect for blobServer is set, definitely use redirect
+	if bs.redirect {
+		return true
+	}
+
+	// Content Caches are configured in dtr as a "downstream" host in the context as part of Garant authorization.
+	// The Content Cache should still be used even if redirect is not enabled.
+	_, ok := ctx.Value(DownstreamKey).(string)
+	// If downstream host is not configured, return false
+	if !ok {
+		return false
+	}
+
+	// We only need to redirect to content cache on a GET request
+	if method != http.MethodGet {
+		return false
+	}
+
+	// If we get to this point we have a "downstream" key set in the context of a GET request
+	return true
 }
 
 func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error {
@@ -34,7 +61,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		return err
 	}
 
-	if bs.redirect {
+	if bs.shouldUseRedirect(ctx, r.Method) {
 		redirectURL, err := bs.driver.URLFor(ctx, path, map[string]interface{}{"method": r.Method})
 		switch err.(type) {
 		case nil:
