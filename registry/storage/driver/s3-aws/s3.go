@@ -1374,7 +1374,7 @@ func createHTTPClient(userAgent, rootCA string, skipVerify bool) *http.Client {
 	}
 
 	if tlsConfig != nil {
-		httpTransport = &http.Transport{TLSClientConfig: tlsConfig}
+		httpTransport = &http.Transport{TLSClientConfig: tlsConfig, Proxy: http.ProxyFromEnvironment}
 	}
 
 	if userAgent == "" {
