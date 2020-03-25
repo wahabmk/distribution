@@ -32,7 +32,7 @@ var configStruct = Configuration{
 		Fields: map[string]interface{}{"environment": "test"},
 	},
 	Storage: Storage{
-		"s3": Parameters{
+		StorageDriverTypeS3: Parameters{
 			"region":        "us-east-1",
 			"bucket":        "my-bucket",
 			"rootdirectory": "/registry",
@@ -251,7 +251,7 @@ func (suite *ConfigSuite) TestParseIncomplete(c *C) {
 	c.Assert(err, NotNil)
 
 	suite.expectedConfig.Log.Fields = nil
-	suite.expectedConfig.Storage = Storage{"filesystem": Parameters{"rootdirectory": "/tmp/testroot"}}
+	suite.expectedConfig.Storage = Storage{StorageDriverTypeFilesystem: Parameters{"rootdirectory": "/tmp/testroot"}}
 	suite.expectedConfig.Auth = Auth{"silly": Parameters{"realm": "silly"}}
 	suite.expectedConfig.Reporting = Reporting{}
 	suite.expectedConfig.Notifications = Notifications{}
@@ -259,7 +259,7 @@ func (suite *ConfigSuite) TestParseIncomplete(c *C) {
 
 	// Note: this also tests that REGISTRY_STORAGE and
 	// REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY can be used together
-	os.Setenv("REGISTRY_STORAGE", "filesystem")
+	os.Setenv("REGISTRY_STORAGE", StorageDriverTypeFilesystem)
 	os.Setenv("REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY", "/tmp/testroot")
 	os.Setenv("REGISTRY_AUTH", "silly")
 	os.Setenv("REGISTRY_AUTH_SILLY_REALM", "silly")
@@ -273,9 +273,9 @@ func (suite *ConfigSuite) TestParseIncomplete(c *C) {
 // that match the given storage type will only include environment-defined
 // parameters and remove yaml-defined parameters
 func (suite *ConfigSuite) TestParseWithSameEnvStorage(c *C) {
-	suite.expectedConfig.Storage = Storage{"s3": Parameters{"region": "us-east-1"}}
+	suite.expectedConfig.Storage = Storage{StorageDriverTypeS3: Parameters{"region": "us-east-1"}}
 
-	os.Setenv("REGISTRY_STORAGE", "s3")
+	os.Setenv("REGISTRY_STORAGE", StorageDriverTypeS3)
 	os.Setenv("REGISTRY_STORAGE_S3_REGION", "us-east-1")
 
 	config, err := Parse(bytes.NewReader([]byte(configYamlV0_1)))
@@ -316,10 +316,10 @@ func (suite *ConfigSuite) TestParseWithDifferentEnvStorageType(c *C) {
 // that changes the storage type will be reflected in the parsed Configuration struct and that
 // environment storage parameters will also be included
 func (suite *ConfigSuite) TestParseWithDifferentEnvStorageTypeAndParams(c *C) {
-	suite.expectedConfig.Storage = Storage{"filesystem": Parameters{}}
+	suite.expectedConfig.Storage = Storage{StorageDriverTypeFilesystem: Parameters{}}
 	suite.expectedConfig.Storage.setParameter("rootdirectory", "/tmp/testroot")
 
-	os.Setenv("REGISTRY_STORAGE", "filesystem")
+	os.Setenv("REGISTRY_STORAGE", StorageDriverTypeFilesystem)
 	os.Setenv("REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY", "/tmp/testroot")
 
 	config, err := Parse(bytes.NewReader([]byte(configYamlV0_1)))
@@ -466,7 +466,7 @@ func (suite *ConfigSuite) TestParseEnvMany(c *C) {
 	os.Setenv("REGISTRY_LOG_FIELDS", "abc: xyz")
 	os.Setenv("REGISTRY_LOG_HOOKS", "- type: asdf")
 	os.Setenv("REGISTRY_LOGLEVEL", "debug")
-	os.Setenv("REGISTRY_STORAGE", "s3")
+	os.Setenv("REGISTRY_STORAGE", StorageDriverTypeS3)
 	os.Setenv("REGISTRY_AUTH_PARAMS", "param1: value1")
 	os.Setenv("REGISTRY_AUTH_PARAMS_VALUE2", "value2")
 	os.Setenv("REGISTRY_AUTH_PARAMS_VALUE2", "value2")
