@@ -11,6 +11,17 @@ import (
 	"time"
 )
 
+// Storage type constants for each storage driver
+const (
+	StorageDriverTypeInMemory   = "inmemory"
+	StorageDriverTypeFilesystem = "filesystem"
+	StorageDriverTypeNFS        = "nfs"
+	StorageDriverTypeAzure      = "azure"
+	StorageDriverTypeGCS        = "gcs"
+	StorageDriverTypeS3         = "s3"
+	StorageDriverTypeSwift      = "swift"
+)
+
 // Configuration is a versioned registry configuration, intended to be provided by a yaml file, and
 // optionally modified by environment variables.
 //

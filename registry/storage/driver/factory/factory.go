@@ -17,7 +17,7 @@ var driverFactories = make(map[string]StorageDriverFactory)
 // See below for an example of how to register and get a StorageDriver for S3
 //
 //	import _ "github.com/docker/distribution/registry/storage/driver/s3-aws"
-//	s3Driver, err = factory.Create("s3", storageParams)
+//	s3Driver, err = factory.Create(configuration.StorageDriverTypeS3, storageParams)
 //	// assuming no error, s3Driver is the StorageDriver that communicates with S3 according to storageParams
 type StorageDriverFactory interface {
 	// Create returns a new storagedriver.StorageDriver with the given parameters

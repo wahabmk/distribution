@@ -13,14 +13,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/distribution/configuration"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"github.com/docker/distribution/registry/storage/driver/base"
 	"github.com/docker/distribution/registry/storage/driver/factory"
 
 	azure "github.com/Azure/azure-sdk-for-go/storage"
 )
-
-const driverName = "azure"
 
 const (
 	paramAccountName = "accountname"
@@ -42,7 +41,7 @@ type baseEmbed struct{ base.Base }
 type Driver struct{ baseEmbed }
 
 func init() {
-	factory.Register(driverName, &azureDriverFactory{})
+	factory.Register(configuration.StorageDriverTypeAzure, &azureDriverFactory{})
 }
 
 type azureDriverFactory struct{}
@@ -99,7 +98,7 @@ func New(accountName, accountKey, container, realm string) (*Driver, error) {
 
 // Implement the storagedriver.StorageDriver interface.
 func (d *driver) Name() string {
-	return driverName
+	return configuration.StorageDriverTypeAzure
 }
 
 // GetContent retrieves the content stored at "path" as a []byte.

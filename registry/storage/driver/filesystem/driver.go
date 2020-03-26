@@ -11,13 +11,13 @@ import (
 	"path"
 	"time"
 
+	"github.com/docker/distribution/configuration"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"github.com/docker/distribution/registry/storage/driver/base"
 	"github.com/docker/distribution/registry/storage/driver/factory"
 )
 
 const (
-	driverName           = "filesystem"
 	defaultRootDirectory = "/var/lib/registry"
 	defaultMaxThreads    = uint64(100)
 
@@ -35,7 +35,7 @@ type DriverParameters struct {
 }
 
 func init() {
-	factory.Register(driverName, &filesystemDriverFactory{})
+	factory.Register(configuration.StorageDriverTypeFilesystem, &filesystemDriverFactory{})
 }
 
 // filesystemDriverFactory implements the factory.StorageDriverFactory interface
@@ -112,7 +112,7 @@ func New(params DriverParameters) *Driver {
 // Implement the storagedriver.StorageDriver interface
 
 func (d *driver) Name() string {
-	return driverName
+	return configuration.StorageDriverTypeFilesystem
 }
 
 // GetContent retrieves the content stored at "path" as a []byte.

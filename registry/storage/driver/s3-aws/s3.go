@@ -37,6 +37,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 
+	"github.com/docker/distribution/configuration"
 	dcontext "github.com/docker/distribution/context"
 	"github.com/docker/distribution/registry/client/transport"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
@@ -44,6 +45,7 @@ import (
 	"github.com/docker/distribution/registry/storage/driver/factory"
 )
 
+// s3aws is the secondary driverName for s3
 const driverName = "s3aws"
 
 // minChunkSize defines the minimum multipart upload chunk size
@@ -128,7 +130,7 @@ func init() {
 	}
 
 	// Register this as the default s3 driver in addition to s3aws
-	factory.Register("s3", &s3DriverFactory{})
+	factory.Register(configuration.StorageDriverTypeS3, &s3DriverFactory{})
 	factory.Register(driverName, &s3DriverFactory{})
 }
 

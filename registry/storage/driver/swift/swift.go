@@ -35,13 +35,14 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/ncw/swift"
 
+	"github.com/docker/distribution/configuration"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"github.com/docker/distribution/registry/storage/driver/base"
 	"github.com/docker/distribution/registry/storage/driver/factory"
 	"github.com/docker/distribution/version"
 )
 
-const driverName = "swift"
+const driverName = configuration.StorageDriverTypeSwift
 
 // defaultChunkSize defines the default size of a segment
 const defaultChunkSize = 20 * 1024 * 1024
