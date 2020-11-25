@@ -131,15 +131,24 @@ func (err ErrTagConflict) Error() string {
 // ErrPolicyEnforced is returned when access to a requested resource is denied
 // because a configured enforcement policy is denying the request.
 type ErrPolicyEnforced struct {
-	RepoName string
-	PolicyID string
-	Global   bool
+	RepoName  string
+	PolicyIDs []string
+	Global    bool
 }
 
 func (err ErrPolicyEnforced) Error() string {
 	if !err.Global {
-		return fmt.Sprintf("pull access denied against %s: enforcement policy %s blocked request", err.RepoName, err.PolicyID)
+		return fmt.Sprintf("pull access denied against %s: enforcement policies %s blocked request", err.RepoName, policyList(err.PolicyIDs))
 	}
 	return fmt.Sprintf("pull access denied against %s: global enforcement policy blocked request", err.RepoName)
 
+}
+
+// policyList lists PolicyIDs in a human readable format
+func policyList(policyIDs []string) string {
+	var ids []string
+	for _, id := range policyIDs {
+		ids = append(ids, fmt.Sprintf("'%s'", id))
+	}
+	return strings.Join(ids, ", ")
 }
