@@ -127,3 +127,19 @@ type ErrTagConflict struct {
 func (err ErrTagConflict) Error() string {
 	return fmt.Sprintf("tag=%s cannot be overwritten because %s is an immutable repository", err.Tag, err.Name)
 }
+
+// ErrPolicyEnforced is returned when access to a requested resource is denied
+// because a configured enforcement policy is denying the request.
+type ErrPolicyEnforced struct {
+	RepoName string
+	PolicyID string
+	Global   bool
+}
+
+func (err ErrPolicyEnforced) Error() string {
+	if !err.Global {
+		return fmt.Sprintf("pull access denied against %s: enforcement policy %s blocked request", err.RepoName, err.PolicyID)
+	}
+	return fmt.Sprintf("pull access denied against %s: global enforcement policy blocked request", err.RepoName)
+
+}

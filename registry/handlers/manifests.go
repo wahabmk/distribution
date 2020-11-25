@@ -15,11 +15,11 @@ import (
 	"github.com/docker/distribution/manifest/schema2"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/api/errcode"
-	"github.com/docker/distribution/registry/api/v2"
+	v2 "github.com/docker/distribution/registry/api/v2"
 	"github.com/docker/distribution/registry/auth"
 	"github.com/gorilla/handlers"
 	"github.com/opencontainers/go-digest"
-	"github.com/opencontainers/image-spec/specs-go/v1"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // These constants determine which architecture and OS to choose from a
@@ -142,13 +142,17 @@ func (imh *manifestHandler) GetManifest(w http.ResponseWriter, r *http.Request) 
 	}
 	manifest, err := manifests.Get(imh, imh.Digest, options...)
 	if err != nil {
-		if _, ok := err.(distribution.ErrManifestUnknownRevision); ok {
-			imh.Errors = append(imh.Errors, v2.ErrorCodeManifestUnknown.WithDetail(err))
-		} else {
-			imh.Errors = append(imh.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
+		switch manifestErr := err.(type) {
+		case distribution.ErrManifestUnknownRevision:
+			imh.Errors = append(imh.Errors, v2.ErrorCodeManifestUnknown.WithDetail(manifestErr))
+		case distribution.ErrPolicyEnforced:
+			imh.Errors = append(imh.Errors, errcode.ErrorCodePolicyEnforced.WithMessage(manifestErr.Error()))
+		default:
+			imh.Errors = append(imh.Errors, errcode.ErrorCodeUnknown.WithDetail(manifestErr))
 		}
 		return
 	}
+
 	// determine the type of the returned manifest
 	manifestType := manifestSchema1
 	schema2Manifest, isSchema2 := manifest.(*schema2.DeserializedManifest)
@@ -205,10 +209,13 @@ func (imh *manifestHandler) GetManifest(w http.ResponseWriter, r *http.Request) 
 
 		manifest, err = manifests.Get(imh, manifestDigest)
 		if err != nil {
-			if _, ok := err.(distribution.ErrManifestUnknownRevision); ok {
-				imh.Errors = append(imh.Errors, v2.ErrorCodeManifestUnknown.WithDetail(err))
-			} else {
-				imh.Errors = append(imh.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
+			switch manifestErr := err.(type) {
+			case distribution.ErrManifestUnknownRevision:
+				imh.Errors = append(imh.Errors, v2.ErrorCodeManifestUnknown.WithDetail(manifestErr))
+			case distribution.ErrPolicyEnforced:
+				imh.Errors = append(imh.Errors, errcode.ErrorCodePolicyEnforced.WithMessage(manifestErr.Error()))
+			default:
+				imh.Errors = append(imh.Errors, errcode.ErrorCodeUnknown.WithDetail(manifestErr))
 			}
 			return
 		}

@@ -83,6 +83,17 @@ var (
 		an immutable resource`,
 		HTTPStatusCode: http.StatusConflict,
 	})
+
+	// ErrorPolicyEnforced is returned if an action made by a client has been
+	// blocked by a configured enforcement policy within the registry
+	ErrorCodePolicyEnforced = Register("errcode", ErrorDescriptor{
+		Value:   "ENFORCED",
+		Message: "enforcement policy blocked request",
+		Description: `The access controller denied access for the
+		operation on a resource due to a configured enforcement policy
+		blocking the requested access.`,
+		HTTPStatusCode: http.StatusForbidden,
+	})
 )
 
 var nextCode = 1000
