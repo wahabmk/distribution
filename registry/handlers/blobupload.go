@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -76,12 +75,6 @@ func (buh *blobUploadHandler) StartBlobUpload(w http.ResponseWriter, r *http.Req
 
 	blobs := buh.Repository.Blobs(buh)
 	upload, err := blobs.Create(buh, options...)
-
-	e := distribution.ErrRepositoryNameInvalid{}
-	if errors.As(err, &e) {
-		buh.Errors = append(buh.Errors, errcode.ErrorCodeUnsupported.WithMessage(e.Error()).WithDetail(e))
-		return
-	}
 
 	if err != nil {
 		if ebm, ok := err.(distribution.ErrBlobMounted); ok {
