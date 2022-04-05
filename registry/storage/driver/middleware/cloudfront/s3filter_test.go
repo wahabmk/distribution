@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/distribution/configuration"
 	dcontext "github.com/docker/distribution/context"
 
 	"reflect" // used as a replacement for testify
@@ -236,7 +237,7 @@ func TestParsing(t *testing.T) {
 	assertEqual(t, prefixEntry{
 		IPV4Prefix: "192.168.0.0",
 		Region:     "someregion",
-		Service:    "s3",
+		Service:    configuration.StorageDriverTypeS3,
 	}, schema.Prefixes[0])
 	assertEqual(t, 1, len(schema.V6Prefixes))
 	assertEqual(t, prefixEntry{

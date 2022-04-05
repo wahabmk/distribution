@@ -140,12 +140,6 @@ func (t *Token) Verify(verifyOpts VerifyOptions) error {
 		return ErrInvalidToken
 	}
 
-	// Verify that the Audience claim is allowed.
-	if !contains(verifyOpts.AcceptedAudiences, t.Claims.Audience) {
-		log.Infof("token intended for another audience: %q", t.Claims.Audience)
-		return ErrInvalidToken
-	}
-
 	// Verify that the token is currently usable and not expired.
 	currentTime := time.Now()
 
