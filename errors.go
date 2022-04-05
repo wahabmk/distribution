@@ -117,3 +117,38 @@ type ErrManifestNameInvalid struct {
 func (err ErrManifestNameInvalid) Error() string {
 	return fmt.Sprintf("manifest name %q invalid: %v", err.Name, err.Reason)
 }
+
+// ErrTagConflict is returned if a tag cannot be overwritten
+type ErrTagConflict struct {
+	Tag  string
+	Name string
+}
+
+func (err ErrTagConflict) Error() string {
+	return fmt.Sprintf("tag=%s cannot be overwritten because %s is an immutable repository", err.Tag, err.Name)
+}
+
+// ErrPolicyEnforced is returned when access to a requested resource is denied
+// because a configured enforcement policy is denying the request.
+type ErrPolicyEnforced struct {
+	RepoName  string
+	PolicyIDs []string
+	Global    bool
+}
+
+func (err ErrPolicyEnforced) Error() string {
+	if !err.Global {
+		return fmt.Sprintf("pull access denied against %s: enforcement policies %s blocked request", err.RepoName, policyList(err.PolicyIDs))
+	}
+	return fmt.Sprintf("pull access denied against %s: global enforcement policy blocked request", err.RepoName)
+
+}
+
+// policyList lists PolicyIDs in a human readable format
+func policyList(policyIDs []string) string {
+	var ids []string
+	for _, id := range policyIDs {
+		ids = append(ids, fmt.Sprintf("'%s'", id))
+	}
+	return strings.Join(ids, ", ")
+}

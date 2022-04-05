@@ -8,15 +8,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/docker/distribution/configuration"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"github.com/docker/distribution/registry/storage/driver/base"
 	"github.com/docker/distribution/registry/storage/driver/factory"
 )
 
-const driverName = "inmemory"
-
 func init() {
-	factory.Register(driverName, &inMemoryDriverFactory{})
+	factory.Register(configuration.StorageDriverTypeInMemory, &inMemoryDriverFactory{})
 }
 
 // inMemoryDriverFacotry implements the factory.StorageDriverFactory interface.
@@ -65,7 +64,7 @@ func New() *Driver {
 // Implement the storagedriver.StorageDriver interface.
 
 func (d *driver) Name() string {
-	return driverName
+	return configuration.StorageDriverTypeInMemory
 }
 
 // GetContent retrieves the content stored at "path" as a []byte.

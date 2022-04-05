@@ -147,7 +147,8 @@ storage:
     endpoint: optional endpoints
     internal: optional internal endpoint
     bucket: OSS bucket
-    encrypt: optional data encryption setting
+    encrypt: optional enable server-side encryption
+    encryptionkeyid: optional KMS key id for encryption
     secure: optional ssl setting
     chunksize: optional size valye
     rootdirectory: optional root directory
@@ -447,7 +448,8 @@ storage:
     endpoint: optional endpoints
     internal: optional internal endpoint
     bucket: OSS bucket
-    encrypt: optional data encryption setting
+    encrypt: optional enable server-side encryption
+    encryptionkeyid: optional KMS key id for encryption
     secure: optional ssl setting
     chunksize: optional size valye
     rootdirectory: optional root directory
@@ -704,14 +706,30 @@ interpretation of the options.
 | `privatekey` | yes   | The private key for Cloudfront, provided by AWS.        |
 | `keypairid` | yes    | The key pair ID provided by AWS.                         |
 | `duration` | no      | An integer and unit for the duration of the Cloudfront session. Valid time units are `ns`, `us` (or `µs`), `ms`, `s`, `m`, or `h`. For example, `3000s` is valid, but `3000 s` is not. If you do not specify a `duration` or you specify an integer without a time unit, the duration defaults to `20m` (20 minutes).|
-|`ipfilteredby`|no     | A string with the following value `none|aws|awsregion`. |
+|`ipfilteredby`|no     | A string with the following value `none`, `aws` or `awsregion`. |
 |`awsregion`|no        | A comma separated string of AWS regions, only available when `ipfilteredby` is `awsregion`. For example, `us-east-1, us-west-2`|
 |`updatefrenquency`|no | The frequency to update AWS IP regions, default: `12h`|
 |`iprangesurl`|no      | The URL contains the AWS IP ranges information, default: `https://ip-ranges.amazonaws.com/ip-ranges.json`|
-Then value of ipfilteredby:
-`none`: default, do not filter by IP
-`aws`: IP from AWS goes to S3 directly
-`awsregion`: IP from certain AWS regions goes to S3 directly, use together with `awsregion`
+
+
+Value of `ipfilteredby` can be:
+
+| Value       | Description                        |
+|-------------|------------------------------------|
+| `none`      | default, do not filter by IP       |
+| `aws`       | IP from AWS goes to S3 directly    |
+| `awsregion` | IP from certain AWS regions goes to S3 directly, use together with `awsregion`. |
+
+### `alicdn`
+
+`alicdn` storage middleware allows the registry to serve layers via a content delivery network provided by Alibaba Cloud. Alicdn requires the OSS storage driver.
+
+| Parameter    | Required | Description                                                             |
+|--------------|----------|-------------------------------------------------------------------------|
+| `baseurl`    | yes      | The `SCHEME://HOST` at which Alicdn is served.                          |
+| `authtype`   | yes      | The URL authentication type for Alicdn, which should be `a`, `b` or `c`. See the [Authentication configuration](https://www.alibabacloud.com/help/doc-detail/85117.htm).|
+| `privatekey` | yes      | The URL authentication key for Alicdn.                                  |
+| `duration`   | no       | An integer and unit for the duration of the Alicdn session. Valid time units are `ns`, `us` (or `µs`), `ms`, `s`, `m`, or `h`.|
 
 ### `redirect`
 
@@ -777,6 +795,7 @@ http:
     clientcas:
       - /path/to/ca.pem
       - /path/to/another/ca.pem
+    minimumtls: tls1.0
     letsencrypt:
       cachefile: /path/to/cache-file
       email: emailused@letsencrypt.com
@@ -813,8 +832,9 @@ and proxy connections to the registry server.
 | Parameter | Required | Description                                           |
 |-----------|----------|-------------------------------------------------------|
 | `certificate` | yes  | Absolute path to the x509 certificate file.           |
-| `key`     | yes      | Absolute path to the x509 private key file.           |
-| `clientcas` | no     | An array of absolute paths to x509 CA files.          |
+| `key`         | yes  | Absolute path to the x509 private key file.           |
+| `clientcas`   | no   | An array of absolute paths to x509 CA files.          |
+| `minimumtls`  | no   | Minimum TLS version allowed (tls1.0, tls1.1, tls1.2). Defaults to tls1.0 |
 
 ### `letsencrypt`
 
@@ -828,7 +848,9 @@ TLS certificates provided by
 > to the `docker run` command or using a similar setting in a cloud
 > configuration. You should also set the `hosts` option to the list of hostnames
 > that are valid for this registry to avoid trying to get certificates for random
-> hostnames due to malicious clients connecting with bogus SNI hostnames.
+> hostnames due to malicious clients connecting with bogus SNI hostnames. Please
+> ensure that you have the `ca-certificates` package installed in order to verify
+> letsencrypt certificates.
 
 | Parameter | Required | Description                                           |
 |-----------|----------|-------------------------------------------------------|

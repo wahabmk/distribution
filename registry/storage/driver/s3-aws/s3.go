@@ -15,6 +15,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -36,6 +37,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 
+	"github.com/docker/distribution/configuration"
 	dcontext "github.com/docker/distribution/context"
 	"github.com/docker/distribution/registry/client/transport"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
@@ -43,6 +45,7 @@ import (
 	"github.com/docker/distribution/registry/storage/driver/factory"
 )
 
+// s3aws is the secondary driverName for s3
 const driverName = "s3aws"
 
 // minChunkSize defines the minimum multipart upload chunk size
@@ -93,6 +96,7 @@ type DriverParameters struct {
 	KeyID                       string
 	Secure                      bool
 	SkipVerify                  bool
+	RootCA                      string
 	V4Auth                      bool
 	ChunkSize                   int64
 	MultipartCopyChunkSize      int64
@@ -126,7 +130,7 @@ func init() {
 	}
 
 	// Register this as the default s3 driver in addition to s3aws
-	factory.Register("s3", &s3DriverFactory{})
+	factory.Register(configuration.StorageDriverTypeS3, &s3DriverFactory{})
 	factory.Register(driverName, &s3DriverFactory{})
 }
 
@@ -188,19 +192,19 @@ func FromParameters(parameters map[string]interface{}) (*Driver, error) {
 
 	regionName := parameters["region"]
 	if regionName == nil || fmt.Sprint(regionName) == "" {
-		return nil, fmt.Errorf("No region parameter provided")
+		return nil, fmt.Errorf("no region parameter provided")
 	}
 	region := fmt.Sprint(regionName)
 	// Don't check the region value if a custom endpoint is provided.
 	if regionEndpoint == "" {
 		if _, ok := validRegions[region]; !ok {
-			return nil, fmt.Errorf("Invalid region provided: %v", region)
+			return nil, fmt.Errorf("invalid region provided: %v", region)
 		}
 	}
 
 	bucket := parameters["bucket"]
 	if bucket == nil || fmt.Sprint(bucket) == "" {
-		return nil, fmt.Errorf("No bucket parameter provided")
+		return nil, fmt.Errorf("no bucket parameter provided")
 	}
 
 	encryptBool := false
@@ -209,7 +213,7 @@ func FromParameters(parameters map[string]interface{}) (*Driver, error) {
 	case string:
 		b, err := strconv.ParseBool(encrypt)
 		if err != nil {
-			return nil, fmt.Errorf("The encrypt parameter should be a boolean")
+			return nil, fmt.Errorf("the encrypt parameter should be a boolean")
 		}
 		encryptBool = b
 	case bool:
@@ -217,7 +221,7 @@ func FromParameters(parameters map[string]interface{}) (*Driver, error) {
 	case nil:
 		// do nothing
 	default:
-		return nil, fmt.Errorf("The encrypt parameter should be a boolean")
+		return nil, fmt.Errorf("the encrypt parameter should be a boolean")
 	}
 
 	secureBool := true
@@ -226,7 +230,7 @@ func FromParameters(parameters map[string]interface{}) (*Driver, error) {
 	case string:
 		b, err := strconv.ParseBool(secure)
 		if err != nil {
-			return nil, fmt.Errorf("The secure parameter should be a boolean")
+			return nil, fmt.Errorf("the secure parameter should be a boolean")
 		}
 		secureBool = b
 	case bool:
@@ -234,7 +238,7 @@ func FromParameters(parameters map[string]interface{}) (*Driver, error) {
 	case nil:
 		// do nothing
 	default:
-		return nil, fmt.Errorf("The secure parameter should be a boolean")
+		return nil, fmt.Errorf("the secure parameter should be a boolean")
 	}
 
 	skipVerifyBool := false
@@ -243,7 +247,7 @@ func FromParameters(parameters map[string]interface{}) (*Driver, error) {
 	case string:
 		b, err := strconv.ParseBool(skipVerify)
 		if err != nil {
-			return nil, fmt.Errorf("The skipVerify parameter should be a boolean")
+			return nil, fmt.Errorf("the skipVerify parameter should be a boolean")
 		}
 		skipVerifyBool = b
 	case bool:
@@ -251,7 +255,12 @@ func FromParameters(parameters map[string]interface{}) (*Driver, error) {
 	case nil:
 		// do nothing
 	default:
-		return nil, fmt.Errorf("The skipVerify parameter should be a boolean")
+		return nil, fmt.Errorf("the skipVerify parameter should be a boolean")
+	}
+
+	rootCA := parameters["rootca"]
+	if rootCA == nil {
+		rootCA = ""
 	}
 
 	v4Bool := true
@@ -260,7 +269,7 @@ func FromParameters(parameters map[string]interface{}) (*Driver, error) {
 	case string:
 		b, err := strconv.ParseBool(v4auth)
 		if err != nil {
-			return nil, fmt.Errorf("The v4auth parameter should be a boolean")
+			return nil, fmt.Errorf("the v4auth parameter should be a boolean")
 		}
 		v4Bool = b
 	case bool:
@@ -268,7 +277,7 @@ func FromParameters(parameters map[string]interface{}) (*Driver, error) {
 	case nil:
 		// do nothing
 	default:
-		return nil, fmt.Errorf("The v4auth parameter should be a boolean")
+		return nil, fmt.Errorf("the v4auth parameter should be a boolean")
 	}
 
 	keyID := parameters["keyid"]
@@ -306,7 +315,7 @@ func FromParameters(parameters map[string]interface{}) (*Driver, error) {
 	if storageClassParam != nil {
 		storageClassString, ok := storageClassParam.(string)
 		if !ok {
-			return nil, fmt.Errorf("The storageclass parameter must be one of %v, %v invalid",
+			return nil, fmt.Errorf("the storageclass parameter must be one of %v, %v invalid",
 				[]string{s3.StorageClassStandard, s3.StorageClassReducedRedundancy}, storageClassParam)
 		}
 		// All valid storage class parameters are UPPERCASE, so be a bit more flexible here
@@ -314,7 +323,7 @@ func FromParameters(parameters map[string]interface{}) (*Driver, error) {
 		if storageClassString != noStorageClass &&
 			storageClassString != s3.StorageClassStandard &&
 			storageClassString != s3.StorageClassReducedRedundancy {
-			return nil, fmt.Errorf("The storageclass parameter must be one of %v, %v invalid",
+			return nil, fmt.Errorf("the storageclass parameter must be one of %v, %v invalid",
 				[]string{noStorageClass, s3.StorageClassStandard, s3.StorageClassReducedRedundancy}, storageClassParam)
 		}
 		storageClass = storageClassString
@@ -330,11 +339,11 @@ func FromParameters(parameters map[string]interface{}) (*Driver, error) {
 	if objectACLParam != nil {
 		objectACLString, ok := objectACLParam.(string)
 		if !ok {
-			return nil, fmt.Errorf("Invalid value for objectacl parameter: %v", objectACLParam)
+			return nil, fmt.Errorf("invalid value for objectacl parameter: %v", objectACLParam)
 		}
 
 		if _, ok = validObjectACLs[objectACLString]; !ok {
-			return nil, fmt.Errorf("Invalid value for objectacl parameter: %v", objectACLParam)
+			return nil, fmt.Errorf("invalid value for objectacl parameter: %v", objectACLParam)
 		}
 		objectACL = objectACLString
 	}
@@ -351,6 +360,7 @@ func FromParameters(parameters map[string]interface{}) (*Driver, error) {
 		fmt.Sprint(keyID),
 		secureBool,
 		skipVerifyBool,
+		fmt.Sprint(rootCA),
 		v4Bool,
 		chunkSize,
 		multipartCopyChunkSize,
@@ -389,7 +399,7 @@ func getParameterAsInt64(parameters map[string]interface{}, name string, default
 	}
 
 	if rv < min || rv > max {
-		return 0, fmt.Errorf("The %s %#v parameter should be a number between %d and %d (inclusive)", name, rv, min, max)
+		return 0, fmt.Errorf("the %s %#v parameter should be a number between %d and %d (inclusive)", name, rv, min, max)
 	}
 
 	return rv, nil
@@ -401,7 +411,7 @@ func New(params DriverParameters) (*Driver, error) {
 	if !params.V4Auth &&
 		(params.RegionEndpoint == "" ||
 			strings.Contains(params.RegionEndpoint, "s3.amazonaws.com")) {
-		return nil, fmt.Errorf("On Amazon S3 this storage driver can only be used with v4 authentication")
+		return nil, fmt.Errorf("on Amazon S3 this storage driver can only be used with v4 authentication")
 	}
 
 	awsConfig := aws.NewConfig()
@@ -430,24 +440,7 @@ func New(params DriverParameters) (*Driver, error) {
 	awsConfig.WithCredentials(creds)
 	awsConfig.WithRegion(params.Region)
 	awsConfig.WithDisableSSL(!params.Secure)
-
-	if params.UserAgent != "" || params.SkipVerify {
-		httpTransport := http.DefaultTransport
-		if params.SkipVerify {
-			httpTransport = &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			}
-		}
-		if params.UserAgent != "" {
-			awsConfig.WithHTTPClient(&http.Client{
-				Transport: transport.NewTransport(httpTransport, transport.NewHeaderRequestModifier(http.Header{http.CanonicalHeaderKey("User-Agent"): []string{params.UserAgent}})),
-			})
-		} else {
-			awsConfig.WithHTTPClient(&http.Client{
-				Transport: transport.NewTransport(httpTransport),
-			})
-		}
-	}
+	awsConfig.WithHTTPClient(createHTTPClient(params.UserAgent, params.RootCA, params.SkipVerify))
 
 	sess, err = session.NewSession(awsConfig)
 	if err != nil {
@@ -878,7 +871,7 @@ func (d *driver) URLFor(ctx context.Context, path string, options map[string]int
 	if ok {
 		et, ok := expires.(time.Time)
 		if ok {
-			expiresIn = et.Sub(time.Now())
+			expiresIn = time.Until(et)
 		}
 	}
 
@@ -970,8 +963,19 @@ func (d *driver) doWalk(parentCtx context.Context, objectCount *int64, path, pre
 	defer done("s3aws.ListObjectsV2Pages(%s)", path)
 	listObjectErr := d.S3.ListObjectsV2PagesWithContext(ctx, listObjectsInput, func(objects *s3.ListObjectsV2Output, lastPage bool) bool {
 
-		*objectCount += *objects.KeyCount
-		walkInfos := make([]walkInfoContainer, 0, *objects.KeyCount)
+		var count int64
+		// KeyCount was introduced with version 2 of the GET Bucket operation in S3.
+		// Some S3 implementations don't support V2 now, so we fall back to manual
+		// calculation of the key count if required
+		if objects.KeyCount != nil {
+			count = *objects.KeyCount
+			*objectCount += *objects.KeyCount
+		} else {
+			count = int64(len(objects.Contents) + len(objects.CommonPrefixes))
+			*objectCount += count
+		}
+
+		walkInfos := make([]walkInfoContainer, 0, count)
 
 		for _, dir := range objects.CommonPrefixes {
 			commonPrefix := *dir.Prefix
@@ -1348,4 +1352,40 @@ func (w *writer) flushPart() error {
 	w.readyPart = w.pendingPart
 	w.pendingPart = nil
 	return nil
+}
+
+func createHTTPClient(userAgent, rootCA string, skipVerify bool) *http.Client {
+	if userAgent == "" && rootCA == "" && skipVerify == false {
+		return nil
+	}
+
+	httpTransport := http.DefaultTransport
+	var tlsConfig *tls.Config
+
+	if skipVerify || rootCA != "" {
+		tlsConfig = &tls.Config{}
+		if skipVerify {
+			tlsConfig.InsecureSkipVerify = true
+		}
+		if rootCA != "" {
+			caCertPool := x509.NewCertPool()
+			caCertPool.AppendCertsFromPEM([]byte(rootCA))
+			tlsConfig.RootCAs = caCertPool
+		}
+
+	}
+
+	if tlsConfig != nil {
+		httpTransport = &http.Transport{TLSClientConfig: tlsConfig, Proxy: http.ProxyFromEnvironment}
+	}
+
+	if userAgent == "" {
+		return &http.Client{
+			Transport: transport.NewTransport(httpTransport),
+		}
+	}
+
+	return &http.Client{
+		Transport: transport.NewTransport(httpTransport, transport.NewHeaderRequestModifier(http.Header{http.CanonicalHeaderKey("User-Agent"): []string{userAgent}})),
+	}
 }

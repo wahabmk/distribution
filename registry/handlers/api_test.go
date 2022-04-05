@@ -65,7 +65,7 @@ func TestCheckAPI(t *testing.T) {
 
 	checkResponse(t, "issuing api base check", resp, http.StatusOK)
 	checkHeaders(t, resp, http.Header{
-		"Content-Type":   []string{"application/json; charset=utf-8"},
+		"Content-Type":   []string{"application/json"},
 		"Content-Length": []string{"2"},
 	})
 
@@ -259,7 +259,7 @@ func TestURLPrefix(t *testing.T) {
 
 	checkResponse(t, "issuing api base check", resp, http.StatusOK)
 	checkHeaders(t, resp, http.Header{
-		"Content-Type":   []string{"application/json; charset=utf-8"},
+		"Content-Type":   []string{"application/json"},
 		"Content-Length": []string{"2"},
 	})
 }
@@ -959,7 +959,6 @@ func testManifestWithStorageError(t *testing.T, env *testEnv, imageName referenc
 	defer resp.Body.Close()
 	checkResponse(t, "getting non-existent manifest", resp, expectedStatusCode)
 	checkBodyHasErrorCodes(t, "getting non-existent manifest", resp, expectedErrorCode)
-	return
 }
 
 func testManifestAPISchema1(t *testing.T, env *testEnv, imageName reference.Named) manifestArgs {
@@ -1066,12 +1065,11 @@ func testManifestAPISchema1(t *testing.T, env *testEnv, imageName reference.Name
 	expectedLayers := make(map[digest.Digest]io.ReadSeeker)
 
 	for i := range unsignedManifest.FSLayers {
-		rs, dgstStr, err := testutil.CreateRandomTarFile()
+		rs, dgst, err := testutil.CreateRandomTarFile()
 
 		if err != nil {
 			t.Fatalf("error creating random layer %d: %v", i, err)
 		}
-		dgst := digest.Digest(dgstStr)
 
 		expectedLayers[dgst] = rs
 		unsignedManifest.FSLayers[i].BlobSum = dgst
@@ -1180,7 +1178,7 @@ func testManifestAPISchema1(t *testing.T, env *testEnv, imageName reference.Name
 	// charset.
 	resp = putManifest(t, "re-putting signed manifest", manifestDigestURL, schema1.MediaTypeSignedManifest, sm2)
 	checkResponse(t, "re-putting signed manifest", resp, http.StatusCreated)
-	resp = putManifest(t, "re-putting signed manifest", manifestDigestURL, "application/json; charset=utf-8", sm2)
+	resp = putManifest(t, "re-putting signed manifest", manifestDigestURL, "application/json", sm2)
 	checkResponse(t, "re-putting signed manifest", resp, http.StatusCreated)
 	resp = putManifest(t, "re-putting signed manifest", manifestDigestURL, "application/json", sm2)
 	checkResponse(t, "re-putting signed manifest", resp, http.StatusCreated)
@@ -1405,12 +1403,11 @@ func testManifestAPISchema2(t *testing.T, env *testEnv, imageName reference.Name
 	expectedLayers := make(map[digest.Digest]io.ReadSeeker)
 
 	for i := range manifest.Layers {
-		rs, dgstStr, err := testutil.CreateRandomTarFile()
+		rs, dgst, err := testutil.CreateRandomTarFile()
 
 		if err != nil {
 			t.Fatalf("error creating random layer %d: %v", i, err)
 		}
-		dgst := digest.Digest(dgstStr)
 
 		expectedLayers[dgst] = rs
 		manifest.Layers[i].Digest = dgst
@@ -2329,7 +2326,7 @@ func checkBodyHasErrorCodes(t *testing.T, msg string, resp *http.Response, error
 
 	// TODO(stevvooe): Shoot. The error setup is not working out. The content-
 	// type headers are being set after writing the status code.
-	// if resp.Header.Get("Content-Type") != "application/json; charset=utf-8" {
+	// if resp.Header.Get("Content-Type") != "application/json" {
 	// 	t.Fatalf("unexpected content type: %v != 'application/json'",
 	// 		resp.Header.Get("Content-Type"))
 	// }
@@ -2432,11 +2429,10 @@ func createRepository(env *testEnv, t *testing.T, imageName string, tag string) 
 	expectedLayers := make(map[digest.Digest]io.ReadSeeker)
 
 	for i := range unsignedManifest.FSLayers {
-		rs, dgstStr, err := testutil.CreateRandomTarFile()
+		rs, dgst, err := testutil.CreateRandomTarFile()
 		if err != nil {
 			t.Fatalf("error creating random layer %d: %v", i, err)
 		}
-		dgst := digest.Digest(dgstStr)
 
 		expectedLayers[dgst] = rs
 		unsignedManifest.FSLayers[i].BlobSum = dgst

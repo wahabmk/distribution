@@ -10,7 +10,6 @@ func TestPathMapper(t *testing.T) {
 	for _, testcase := range []struct {
 		spec     pathSpec
 		expected string
-		err      error
 	}{
 		{
 			spec: manifestRevisionPathSpec{
@@ -83,6 +82,10 @@ func TestPathMapper(t *testing.T) {
 				id:   "asdf-asdf-asdf-adsf",
 			},
 			expected: "/docker/registry/v2/repositories/foo/bar/_uploads/asdf-asdf-asdf-adsf/startedat",
+		},
+		{
+			spec:     layersPathSpec{name: "foo/bar"},
+			expected: "/docker/registry/v2/repositories/foo/bar/_layers",
 		},
 	} {
 		p, err := pathFor(testcase.spec)

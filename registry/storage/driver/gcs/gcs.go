@@ -31,6 +31,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/distribution/configuration"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"github.com/docker/distribution/registry/storage/driver/base"
 	"github.com/docker/distribution/registry/storage/driver/factory"
@@ -44,7 +45,6 @@ import (
 )
 
 const (
-	driverName     = "gcs"
 	dummyProjectID = "<unknown>"
 
 	uploadSessionContentType = "application/x-docker-upload-session"
@@ -76,7 +76,7 @@ type driverParameters struct {
 }
 
 func init() {
-	factory.Register(driverName, &gcsDriverFactory{})
+	factory.Register(configuration.StorageDriverTypeGCS, &gcsDriverFactory{})
 }
 
 // gcsDriverFactory implements the factory.StorageDriverFactory interface
@@ -240,7 +240,7 @@ func New(params driverParameters) (storagedriver.StorageDriver, error) {
 // Implement the storagedriver.StorageDriver interface
 
 func (d *driver) Name() string {
-	return driverName
+	return configuration.StorageDriverTypeGCS
 }
 
 // GetContent retrieves the content stored at "path" as a []byte.
